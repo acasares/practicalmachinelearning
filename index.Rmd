@@ -1,0 +1,16 @@
+---
+title: "Practical Machine Learning Course Project"
+author: "A Casares M."
+date: "4 de diciembre de 2016"
+output: html_document
+---
+## Executive summary
+
+## Background
+
+## Exploratory Data Analysis
+
+## Processing
+
+## Conclusions
+
