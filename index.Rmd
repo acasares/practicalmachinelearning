@@ -1,18 +1,240 @@
 ---
 title: "Practical Machine Learning Course Project"
 author: "A Casares M."
-date: "4 de diciembre de 2016"
+date: "5 de diciembre de 2016"
 output: 
   html_document: 
     keep_md: yes
 ---
 ## Executive summary
+This project is about modeling a process based on given data. This data has been collected within the Human Activity Recognition (HAR) research, particularly focused on weight lifting exercises.   
+As in all machine learning applications, we want to use the data we have to develop a pattern in order to recognize those characteristics in other data that we don't know as much about.   
+The data in this case consists of registers taken from six young healthy participants that were asked to perform one set of 10 repetitions of the Unilateral Dumbbell Biceps Curl exercise in five different fashions.There are many different execution measures recorded, and the proposed approach is to investigate "how (well)" an activity was performed by the wearer.   
+To this purpose, we must fit an appropiate model to a training subset of the data, validate its accuracy, and then predict the outcome (from 5 possible schemes) from another independent test set.   
+As the "Getting and cleaning data" course of this speciality taught us, prior to get into the model fitting, it is necessary to do some exploratory data analysis about the quality of the data, to clean it of garbage and unuseful content if present, and to reduce the involved variables to a well chosen refined set.
+From the 160 variables present in the initial data, this previous activity reduced them to a set of 32, including the "classe" outcome.       
+The next step was to partition this data in two parts: one for "training" the model, and the other to validate on it its fitness. We got 15699 observations in the training part, and 3923 in the testing part.  
+The model was made up using the Random Forest method and the new training dataset. Furthermore, with comparison purposes, it was developed via two different software functions, from two different libraries, and the results were almost identical (though one of the functions took several times as much time as the other).   
+The cross validation of the model, done over the new testing dataset, showed that the obtained accuracy is surprisingly high (99.31%), and thus it is not necessary to find another model or making adjustements over the already obtained.   
+The final verification was done against the Coursera quiz, that is part of this project, and reached 20 / 20 successes, reassuring the correctness of the model.   
 
-## Background
+## Background   
+The devices used to collect the data were devices such as Jawbone Up, Nike FuelBand, and Fitbit, that make possible to inexpensively collect a large amount of data about personal activity. These devices are part of the quantified self movement - a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. However, in the forums of this course and of the "Getting and Cleaning data" ones, that had also a HAR project, has been pointed out that these techniques are also used in a more somber way, to control the activities of people at their working places, such as factories and enterprises.     
+In this project, our goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset).   
+The data for this project come from this source, and only thanks to their generosity in allowing data to be used for this kind of assignment, this work has been made possible.    
 
-## Exploratory Data Analysis
+## Getting and cleaning data
+First, we load two libraries focused on modeling:
+```{r load-packages, message=FALSE, echo=TRUE, warning=FALSE}
+library(caret);library(randomForest)
+```     
+The data has been downloaded previously to a subdirectory. Now we read it, labeling as NA all mischevious information:
+```{r read1}
+train <- read.csv("./HAR WLE/pml-training.csv", na.strings=c("NA","#DIV/0!",""))
+test <- read.csv("./HAR WLE/pml-testing.csv", na.strings=c("NA","#DIV/0!",""))
+```    
+And do some EDA and data cleaning. First display dimensions of the two read datasets:    
+```{r disp1, echo=FALSE}
+cat(sprintf("train dim: %d x %d\n",dim(train)[1],dim(train)[2]))
+cat(sprintf("test dim: %d x %d\n",dim(test)[1],dim(test)[2])) 
+```        
+1.- Build two new datasets keeping variables with numeric data only:    
+```{r depura1}
+nn <- 0
+train1 = data.frame(matrix(ncol=0, nrow = dim(train)[1]))
+test1 = data.frame(matrix(ncol=0, nrow = dim(test)[1]))
+for (i in 1:length(train)){
+    if (is.numeric(train[,i])){nn <- nn+1
+       train1[,nn] <- train[,i]; test1[,nn] <- test[,i]
+       names(train1)[nn] <- names(train)[i]
+       # cat(sprintf('nn=%d, name=%s\n',nn,names(train)[i]))
+    }
+}
+cat(sprintf('Numerical variables in train: %d\n',nn))
+```    
+### Progresive cleaning of variables.        
+2.- From the training set, drop the variables with all near zero values:
+```{r drop1}
+drop_vars <- nearZeroVar(train1, saveMetrics=TRUE)
+train1 <- train1[,!drop_vars$nzv]
+```    
+Drop the same variables fom the test set:
+```{r drop2}
+test1 <- test1[,!drop_vars$nzv]
+```   
+3.- And drop the variables with too many NAs or "":
+```{r drop3}
+min_accept <- 0.9 * dim(train)[1] # 90% or more NAs cause remotion of a variable
+col_accept <- !apply(train1, 2, function(x) sum(is.na(x)) >= min_accept  || sum(x=="") >= min_accept)
+train1 <- train1[,col_accept]
+test1 <- test1[,col_accept]
+```   
+4.- The first four variables are only used for administrative purposes, and don't have information from the sensor devices. Drop them:
+```{r drop4}
+train1 <- train1[,5:dim(train1)[2]]
+test1  <- test1[,5:dim(test1)[2]]
+names(test1) <- names(train1)
+```    
+Add the outcome in train_orl :
+```{r add1}
+train_orl <- cbind(train1,train[,dim(train)[2]])
+test_orl <- cbind(test1,test[,dim(test)[2]])
+names(train_orl)[dim(train_orl)[2]] <- names(train)[dim(train)[2]]
+```    
+The last name is different between train_orl and test_orl:   
+```{r add2}
+names(test_orl)[dim(test_orl)[2]] <- names(test)[dim(test)[2]]
+```
+After removing unuseful variables:
+```{r res1,echo=FALSE}
+cat(sprintf("train dim: %d x %d\n",dim(train1)[1],dim(train1)[2]))
+cat(sprintf("test dim: %d x %d\n",dim(test1)[1],dim(test1)[2]))
+```    
+5.- Drop covariates with high correlation coefficients:
+```{r drop5}
+corr_mat <- cor(train1)
+colinear <- findCorrelation(corr_mat, cutoff = .75) 
+train2<-cbind(classe=train_orl$classe,train1[,-colinear])    
+test2 <- test_orl[, -colinear] 
+```    
+After removing colinear covariates:    
+```{r res2,echo=FALSE}
+cat(sprintf("train dim: %d x %d\n",dim(train2)[1],dim(train2)[2]))
+cat(sprintf("test dim: %d x %d\n",dim(test2)[1],dim(test2)[2]))
+```    
+Partition training dataset in two parts for model evaluation:    
+```{r part}
+set.seed(100247)
+inTrain = createDataPartition(train2$classe, p = 0.8, list = FALSE)
+train_train = train2[ inTrain,]
+train_test =  train2[-inTrain,]
+```    
+After training dataset partition:    
+```{r res3,echo=FALSE}
+cat(sprintf("train_train dim: %d x %d\n",dim(train_train)[1],dim(train_train)[2]))
+lp <- dim(train_test)[1]
+cat(sprintf("train_test dim: %d x %d\n",lp,dim(train_test)[2]))
+```    
+Show some data from the clean and reduced dataset:    
+```{r disp3}
+str(train_train)
+```    
 
 ## Processing
+According to [1], Random Forests is a bit of a Swiss Army Knife of machine learning algorithms.It can be applied to a wide range of problems, and be fairly good at all of them. However, it might not be as good as a specialized algorithm at any given specific problem.    
+That's the reason why, at first instance, I chose this modeling algorithm.    
+If the accuracy found in the cross evaluation were insufficient, it shall be necessary to improve the algorithm, for example, combining it with others. But, if the accuracy is enough, we will have satisfied the requirement.   
+     
+#### Predict with Random Forest algorithm.
+There is one function for implementing it at each of the two loaded libraries. At this stage, I'll make a comparison of their performances and results, to make up a useful criterion about their respective convenience.   
+1.- Let's begin using the *randomForest* function, taken from the homonym package.
+This one allows us to specify the number of trees in the forest. Seems that  100 trees is a good number to start ([1]).       
+```{r pred1}
+ptm <- proc.time()
+rfFit1 <- randomForest(classe ~ .,data = train_train,importance = TRUE, ntree = 100)
+cat(sprintf('Elapsed user time in random forests modeling process: %5.3f sec.',
+            (proc.time()-ptm)[1]))
+print(rfFit1)
+```      
+Cross validation:
+```{r cv1}
+predictions <- predict(rfFit1, newdata=train_test)
+confMat <- confusionMatrix(predictions, train_test$classe)
+print(confMat)  
+```     
+As can be seen, the accuracy (0.9931175) is surprisingly high, and also the Prediction / Reference matrix shows that the cross validation is quite satisfactory.    
+The elapsed user time is somehow large, but this is due to the Markdown interpretation. In the R console, the equivalent script takes a shorter time.    
+To find the out-of-sample error:
+```{r oob1}
+oob <- 1 - (sum(diag(table(train_test$classe, predictions)))/lp)
+cat(sprintf('OOB error: %4.2f%%',100*oob))
+```    
+This value does not totally agree with the estimated 0.81% given in the previous table, but the difference is small.    
+    
+As the accuracy has been very good, we can apply the model to the given test set:
+```{r out1}
+outcome1 <- predict(rfFit1, test1)
+```   
+Predicted outcome in test data:
+```{r}
+print(outcome1)
+```          
+This outcome has been checked with the respective quiz, and is impeccable.    
+As may supposedly come from outside the controlled experiment, it is significant to find which percentage of the 20 guys has done the lifting weight exercise in the right way, since this is the ultimate research's and model's purpose: it corresponds to the *A* classe, present in the 35% of the cases.
+         
+Variable Importance:
+```{r imp1}
+varImpPlot(rfFit1,cex=.5,main="Variable importance")
+```    
+
+Using the more important variables (say the first 10 or 12) of the list, 
+we could considerably lighten the model, as far as the accuracy remained
+acceptable.    
+      
+2.- Comparison with caret's *train* function alternative:    
+In the caret library, the Random Forests algorithm is implemented via the *train* function, through the method *rf*.     
+It seems that the *train* function does not allow to tune the number of 
+trees via an input parameter (though it accepts it), and this may be one of the causes of the much longer user time it takes compared with the first model, since the execution time grows linearly with the number of used trees. 
+```{r pred2}
+ptm <- proc.time()
+control <- trainControl(method = "cv", 5)
+rfFit2 <- train(classe ~ ., method = "rf", data = train_train, trControl = control, ntree = 100)
+cat(sprintf('Elapsed user time in train rf modeling process: %5.3f sec.\n',
+            (proc.time()-ptm)[1]))
+print(rfFit2)
+```    
+Cross validation:
+```{r cv2}
+pred2 <- predict(rfFit2, newdata=train_test)
+confMat <- confusionMatrix(train_test$classe, pred2)
+print(confMat)
+```    
+The accuracy now obtained is 0.9920979, slightly less than the value found in the first model, and the model itself is almost identical, but the elapsed user time is many times larger, thus beeing a serious handicap that prevents the use of this function.       
+    
+Finding the out-of-sample error:
+```{r oob2}
+oob <- 1 - (sum(diag(table(train_test$classe, pred2)))/lp)
+cat(sprintf('OOB error: %4.2f%%',100*oob))
+```    
+Apply the model to the given test set:
+```{r out2}
+outcome2 <- predict(rfFit2, test1)
+```     
+Compare with the first model's predicted outcome:   
+```{r}
+if (length(outcome1)==length(outcome2) && all(outcome1==outcome2)){
+    print("The second model's outcome is identical to the first model's.")
+} else {
+    print("The second model outcome is different from the first model's.")
+}
+```        
+Thus, both models satisfy in a 100% the quiz challenge of the project.   
+
+### Plots the two found models:
+```{r plot1}
+windows.options(width=5, height=4)
+par(mfrow = c(1,1), mar = c(4,4,2,1))
+plot(rfFit1,main="Random Forests model 1")
+```    
+    
+This plot shows that the trees vs. error curves are already getting its plateau, so 100 trees seem to be enough to consider, and adding trees won't improve the accuracy much more.
+```{r plot2}
+print(plot(rfFit2,main="Random Forests model 2"))
+```    
+    
+But the second model's built-in plot does not address the same information, since it is not involved with the number of trees. So, we can't find out here information about this subject.    
 
 ## Conclusions
+- 1.- In this project, the Random Forests algorithm has justified its fame, giving optimal results as for the accuracy obtained and the exactness of its predictions. Thus, it has not been necessary to improve it, or to replace it by another algorithm.       
 
+- 2.- The very high accuracy, on the other hand, is reflecting the good quality of the data, only possible within a rigorously controlled experiment.    
+
+- 3.- It could be possible to reach a more lighten model by reducing even further the number of predictors, using, for instance, the importance ranking of variables, complemented with a Principal Component Analysis.    
+
+- 4.- As for the comparison between the R functions *randomForest* and *train* for this algorithm, the results have been consistently similar. Nevertheless, the remarkable difference obtained on the processing times clearly signals the first function as preferable. This function, in addition, allows the user to specify the number of decision trees to be used in the process, while the second, although accepts a similar input parameter, does not seem to take it into account.       
+
+
+## Bibliography
+- [1].- Hartshorn, Scott. Machine Learning with Random Forests and Decision Trees, 2016, Kindle Edition.   
+- [2].- Rashka, Sebastian. Python Machine Learning, 2015, Packt Publishing.   
+- [3].- Trevor Hastie et al. The Elements of Statistical Learning. Second Edition, 2001, Springer.   
