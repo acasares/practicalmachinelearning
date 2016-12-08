@@ -144,7 +144,7 @@ The data for this project come from this source, and only thanks to their genero
 <h2>Getting and cleaning data</h2>
 <p>First, we load two libraries focused on modeling:</p>
 <pre class="r"><code>library(caret);library(randomForest)</code></pre>
-<p>The data has been downloaded previously to a subdirectory. Now we read it, labeling as NA all mischevious information:</p>
+<p>The data has been downloaded previously to a subdirectory. Now we read it, labeling as NA all mischievious information:</p>
 <pre class="r"><code>train &lt;- read.csv(&quot;./HAR WLE/pml-training.csv&quot;, na.strings=c(&quot;NA&quot;,&quot;#DIV/0!&quot;,&quot;&quot;))
 test &lt;- read.csv(&quot;./HAR WLE/pml-testing.csv&quot;, na.strings=c(&quot;NA&quot;,&quot;#DIV/0!&quot;,&quot;&quot;))</code></pre>
 <p>And do some EDA and data cleaning. First display dimensions of the two read datasets:</p>
@@ -254,7 +254,7 @@ If the accuracy found in the cross evaluation were insufficient, it shall be nec
 rfFit1 &lt;- randomForest(classe ~ .,data = train_train,importance = TRUE, ntree = 100)
 cat(sprintf('Elapsed user time in random forests modeling process: %5.3f sec.',
             (proc.time()-ptm)[1]))</code></pre>
-<pre><code>## Elapsed user time in random forests modeling process: 16.930 sec.</code></pre>
+<pre><code>## Elapsed user time in random forests modeling process: 13.790 sec.</code></pre>
 <pre class="r"><code>print(rfFit1)</code></pre>
 <pre><code>## 
 ## Call:
@@ -349,7 +349,7 @@ control &lt;- trainControl(method = &quot;cv&quot;, 5)
 rfFit2 &lt;- train(classe ~ ., method = &quot;rf&quot;, data = train_train, trControl = control, ntree = 100)
 cat(sprintf('Elapsed user time in train rf modeling process: %5.3f sec.\n',
             (proc.time()-ptm)[1]))</code></pre>
-<pre><code>## Elapsed user time in train rf modeling process: 154.050 sec.</code></pre>
+<pre><code>## Elapsed user time in train rf modeling process: 126.870 sec.</code></pre>
 <pre class="r"><code>print(rfFit2)</code></pre>
 <pre><code>## Random Forest 
 ## 
