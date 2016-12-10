@@ -117,7 +117,7 @@ $(document).ready(function () {
 
 <h1 class="title toc-ignore">Practical Machine Learning Course Project</h1>
 <h4 class="author"><em>A Casares M.</em></h4>
-<h4 class="date"><em>5 de diciembre de 2016</em></h4>
+<h4 class="date"><em>December 5th, 2016</em></h4>
 
 </div>
 
@@ -131,14 +131,14 @@ To this purpose, we must fit an appropiate model to a training subset of the dat
 As the “Getting and cleaning data” course of this speciality taught us, prior to get into the model fitting, it is necessary to do some exploratory data analysis about the quality of the data, to clean it of garbage and unuseful content if present, and to reduce the involved variables to a well chosen refined set. From the 160 variables present in the initial data, this previous activity reduced them to a set of 32, including the “classe” outcome.<br />
 The next step was to partition this data in two parts: one for “training” the model, and the other to validate on it its fitness. We got 15699 observations in the training part, and 3923 in the testing part.<br />
 The model was made up using the Random Forest method and the new training dataset. Furthermore, with comparison purposes, it was developed via two different software functions, from two different libraries, and the results were almost identical (though one of the functions took several times as much time as the other).<br />
-The cross validation of the model, done over the new testing dataset, showed that the obtained accuracy is surprisingly high (99.31%), and thus it is not necessary to find another model or making adjustements over the already obtained.<br />
+The cross validation of the model, done over the testing part dataset, showed that the obtained accuracy is surprisingly high (99.31%), and thus it is not necessary to find another model or making adjustements over the already obtained.<br />
 The final verification was done against the Coursera quiz, that is part of this project, and reached 20 / 20 successes, reassuring the correctness of the model.</p>
 </div>
 <div id="background" class="section level2">
 <h2>Background</h2>
 <p>The devices used to collect the data were devices such as Jawbone Up, Nike FuelBand, and Fitbit, that make possible to inexpensively collect a large amount of data about personal activity. These devices are part of the quantified self movement - a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. However, in the forums of this course and of the “Getting and Cleaning data” ones, that had also a HAR project, has been pointed out that these techniques are also used in a more somber way, to control the activities of people at their working places, such as factories and enterprises.<br />
 In this project, our goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: <a href="http://groupware.les.inf.puc-rio.br/har" class="uri">http://groupware.les.inf.puc-rio.br/har</a> (see the section on the Weight Lifting Exercise Dataset).<br />
-The data for this project come from this source, and only thanks to their generosity in allowing data to be used for this kind of assignment, this work has been made possible.</p>
+The data for this project comes from this source, and only thanks to their generosity in allowing data to be used for this kind of assignment, this work has been made possible.</p>
 </div>
 <div id="getting-and-cleaning-data" class="section level2">
 <h2>Getting and cleaning data</h2>
@@ -254,7 +254,7 @@ If the accuracy found in the cross evaluation were insufficient, it shall be nec
 rfFit1 &lt;- randomForest(classe ~ .,data = train_train,importance = TRUE, ntree = 100)
 cat(sprintf('Elapsed user time in random forests modeling process: %5.3f sec.',
             (proc.time()-ptm)[1]))</code></pre>
-<pre><code>## Elapsed user time in random forests modeling process: 13.790 sec.</code></pre>
+<pre><code>## Elapsed user time in random forests modeling process: 17.080 sec.</code></pre>
 <pre class="r"><code>print(rfFit1)</code></pre>
 <pre><code>## 
 ## Call:
@@ -349,7 +349,7 @@ control &lt;- trainControl(method = &quot;cv&quot;, 5)
 rfFit2 &lt;- train(classe ~ ., method = &quot;rf&quot;, data = train_train, trControl = control, ntree = 100)
 cat(sprintf('Elapsed user time in train rf modeling process: %5.3f sec.\n',
             (proc.time()-ptm)[1]))</code></pre>
-<pre><code>## Elapsed user time in train rf modeling process: 126.870 sec.</code></pre>
+<pre><code>## Elapsed user time in train rf modeling process: 154.350 sec.</code></pre>
 <pre class="r"><code>print(rfFit2)</code></pre>
 <pre><code>## Random Forest 
 ## 
