@@ -2,9 +2,10 @@
 title: "Practical Machine Learning Course Project"
 author: "A Casares M."
 date: "December 5th, 2016"
-output: 
-  html_document: 
+output:
+  html_document:
     keep_md: yes
+  word_document: default
 ---
 ## Executive summary
 This project is about modeling a process based on given data. This data has been collected within the Human Activity Recognition (HAR) research, particularly focused on weight lifting exercises.   
@@ -34,12 +35,12 @@ train <- read.csv("./HAR WLE/pml-training.csv", na.strings=c("NA","#DIV/0!",""))
 test <- read.csv("./HAR WLE/pml-testing.csv", na.strings=c("NA","#DIV/0!",""))
 ```    
 And do some EDA and data cleaning. First display dimensions of the two read datasets:    
-```{r disp1, echo=FALSE}
+```{r disp1, echo=FALSE,comment=""}
 cat(sprintf("train dim: %d x %d\n",dim(train)[1],dim(train)[2]))
 cat(sprintf("test dim: %d x %d\n",dim(test)[1],dim(test)[2])) 
 ```        
 1.- Build two new datasets keeping variables with numeric data only:    
-```{r depura1}
+```{r depura1,comment=""}
 nn <- 0
 train1 = data.frame(matrix(ncol=0, nrow = dim(train)[1]))
 test1 = data.frame(matrix(ncol=0, nrow = dim(test)[1]))
@@ -86,7 +87,7 @@ The last name is different between train_orl and test_orl:
 names(test_orl)[dim(test_orl)[2]] <- names(test)[dim(test)[2]]
 ```
 After removing unuseful variables:
-```{r res1,echo=FALSE}
+```{r res1,echo=FALSE,comment=""}
 cat(sprintf("train dim: %d x %d\n",dim(train1)[1],dim(train1)[2]))
 cat(sprintf("test dim: %d x %d\n",dim(test1)[1],dim(test1)[2]))
 ```    
@@ -98,7 +99,7 @@ train2<-cbind(classe=train_orl$classe,train1[,-colinear])
 test2 <- test_orl[, -colinear] 
 ```    
 After removing colinear covariates:    
-```{r res2,echo=FALSE}
+```{r res2,echo=FALSE,comment=""}
 cat(sprintf("train dim: %d x %d\n",dim(train2)[1],dim(train2)[2]))
 cat(sprintf("test dim: %d x %d\n",dim(test2)[1],dim(test2)[2]))
 ```    
@@ -110,13 +111,13 @@ train_train = train2[ inTrain,]
 train_test =  train2[-inTrain,]
 ```    
 After training dataset partition:    
-```{r res3,echo=FALSE}
+```{r res3,echo=FALSE,comment=""}
 cat(sprintf("train_train dim: %d x %d\n",dim(train_train)[1],dim(train_train)[2]))
 lp <- dim(train_test)[1]
 cat(sprintf("train_test dim: %d x %d\n",lp,dim(train_test)[2]))
 ```    
 Show some data from the clean and reduced dataset:    
-```{r disp3}
+```{r disp3,comment=""}
 str(train_train)
 ```    
 
@@ -129,7 +130,7 @@ If the accuracy found in the cross evaluation were insufficient, it shall be nec
 There is one function for implementing it at each of the two loaded libraries. At this stage, I'll make a comparison of their performances and results, to make up a useful criterion about their respective convenience.   
 1.- Let's begin using the *randomForest* function, taken from the homonym package.
 This one allows us to specify the number of trees in the forest. Seems that  100 trees is a good number to start ([1]).       
-```{r pred1}
+```{r pred1,comment=""}
 ptm <- proc.time()
 rfFit1 <- randomForest(classe ~ .,data = train_train,importance = TRUE, ntree = 100)
 cat(sprintf('Elapsed user time in random forests modeling process: %5.3f sec.',
@@ -137,7 +138,7 @@ cat(sprintf('Elapsed user time in random forests modeling process: %5.3f sec.',
 print(rfFit1)
 ```      
 Cross validation:
-```{r cv1}
+```{r cv1,comment=""}
 predictions <- predict(rfFit1, newdata=train_test)
 confMat <- confusionMatrix(predictions, train_test$classe)
 print(confMat)  
@@ -145,7 +146,7 @@ print(confMat)
 As can be seen, the accuracy (0.9931175) is surprisingly high, and also the Prediction / Reference matrix shows that the cross validation is quite satisfactory.    
 The elapsed user time is somehow large, but this is due to the Markdown interpretation. In the R console, the equivalent script takes a shorter time.    
 To find the out-of-sample error:
-```{r oob1}
+```{r oob1,comment=""}
 oob <- 1 - (sum(diag(table(train_test$classe, predictions)))/lp)
 cat(sprintf('OOB error: %4.2f%%',100*oob))
 ```    
@@ -156,7 +157,7 @@ As the accuracy has been very good, we can apply the model to the given test set
 outcome1 <- predict(rfFit1, test1)
 ```   
 Predicted outcome in test data:
-```{r}
+```{r,comment=""}
 print(outcome1)
 ```          
 This outcome has been checked with the respective quiz, and is impeccable.    
@@ -175,7 +176,7 @@ acceptable.
 In the caret library, the Random Forests algorithm is implemented via the *train* function, through the method *rf*.     
 It seems that the *train* function does not allow to tune the number of 
 trees via an input parameter (though it accepts it), and this may be one of the causes of the much longer user time it takes compared with the first model, since the execution time grows linearly with the number of used trees. 
-```{r pred2}
+```{r pred2,comment=""}
 ptm <- proc.time()
 control <- trainControl(method = "cv", 5)
 rfFit2 <- train(classe ~ ., method = "rf", data = train_train, trControl = control, ntree = 100)
@@ -184,7 +185,7 @@ cat(sprintf('Elapsed user time in train rf modeling process: %5.3f sec.\n',
 print(rfFit2)
 ```    
 Cross validation:
-```{r cv2}
+```{r cv2,comment=""}
 pred2 <- predict(rfFit2, newdata=train_test)
 confMat <- confusionMatrix(train_test$classe, pred2)
 print(confMat)
@@ -192,7 +193,7 @@ print(confMat)
 The accuracy now obtained is 0.9920979, slightly less than the value found in the first model, and the model itself is almost identical, but the elapsed user time is many times larger, thus beeing a serious handicap that prevents the use of this function.       
     
 Finding the out-of-sample error:
-```{r oob2}
+```{r oob2,comment=""}
 oob <- 1 - (sum(diag(table(train_test$classe, pred2)))/lp)
 cat(sprintf('OOB error: %4.2f%%',100*oob))
 ```    
@@ -201,11 +202,11 @@ Apply the model to the given test set:
 outcome2 <- predict(rfFit2, test1)
 ```     
 Compare with the first model's predicted outcome:   
-```{r}
+```{r,comment=""}
 if (length(outcome1)==length(outcome2) && all(outcome1==outcome2)){
     print("The second model's outcome is identical to the first model's.")
 } else {
-    print("The second model outcome is different from the first model's.")
+    print("The second model's outcome is different from the first model's.")
 }
 ```        
 Thus, both models satisfy in a 100% the quiz challenge of the project.   
